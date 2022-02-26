@@ -2,6 +2,7 @@
 import os
 
 from tqdm import tqdm
+import numpy as np
 import matplotlib.pyplot as plt
 
 import torch
@@ -31,6 +32,7 @@ channels = param['channels']
 dataset_name = param['dataset_name']
 category_num = param['category_num']
 input_noise_num = param['input_noise_size']
+ckp_path = param['ckp_path']
 
 # Prepare Datasets
 _, data_loader = get_cifar10(batch_size, 2)
@@ -56,9 +58,6 @@ with tqdm(range(epochs)) as pbar_epochs:
 
     net_G.train()
     net_D.train()
-
-    running_G_loss = 0.0
-    running_D_loss = 0.0
 
     with tqdm(enumerate(data_loader), total=len(data_loader), leave=False) as pbar_loss:
       for i, (real_imgs, labels) in pbar_loss:
@@ -96,10 +95,19 @@ with tqdm(range(epochs)) as pbar_epochs:
     # loss graph用のリスト
     G_total_loss.append(G_loss.detach().numpy()/num_b)
     D_total_loss.append(D_loss.detach().numpy()/num_b)
+    os.makedirs('./saved_loss', exist_ok=True)
+    np.save("./saved_loss/G_total_loss", G_total_loss)
+    np.save("./saved_loss/D_total_loss", D_total_loss)
+
+    if epoch % 50 == 0:
+      os.makedirs('./ckp', exist_ok=True)
+      torch.save(net_G.state_dict(), './ckp/net_G_' + ckp_path)
+      torch.save(net_D.state_dict(), './ckp/net_D_' + ckp_path)
 
     # 再構成可視化用
-    os.mkdir('./visualize', exist_ok=True)
-    save_image(real_imgs.detach()[:9], "./visualize/real_epoch{}.png".format(epoch+1), nrow=3, normalize=True)
-    save_image(fake_imgs.detach()[:9], "./visualize/fake_epoch{}.png".format(epoch+1), nrow=3, normalize=True)
+    if epoch % 10 == 0:
+      os.makedirs('./visualize', exist_ok=True)
+      save_image(real_imgs.detach()[:25], "./visualize/real_epoch{}.png".format(epoch+1), nrow=5, normalize=True)
+      save_image(fake_imgs.detach()[:25], "./visualize/fake_epoch{}.png".format(epoch+1), nrow=5, normalize=True)
 
 make_Loss_Graph(G_total_loss, D_total_loss)
